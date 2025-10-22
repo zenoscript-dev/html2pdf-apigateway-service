@@ -6,18 +6,8 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { Request } from "express";
-import { ApiKey } from "../../database/entities";
 import { ApiKeysService } from "../api-keys.service";
-
-// Extend Express Request to include user and apiKey
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-      apiKey?: ApiKey;
-    }
-  }
-}
+import "./types"; // Import shared types
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
