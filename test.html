@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HTML File</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .highlight {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HTML File to PDF Conversion Test</h1>
+    
+    <p>This is a test HTML file to demonstrate the HTML file upload to PDF conversion functionality.</p>
+    
+    <div class="highlight">
+        <h2>Features Tested:</h2>
+        <ul>
+            <li>HTML file upload validation</li>
+            <li>File size validation (max 5MB)</li>
+            <li>MIME type validation</li>
+            <li>HTML content validation</li>
+            <li>PDF generation from uploaded HTML</li>
+        </ul>
+    </div>
+    
+    <h2>API Endpoint</h2>
+    <p>The endpoint <code>/api/v1/pdf/convert/html-file</code> accepts HTML file uploads and converts them to PDF.</p>
+    
+    <h2>Requirements</h2>
+    <ul>
+        <li>File must have .html extension</li>
+        <li>File must be text/html MIME type</li>
+        <li>File size must be under 5MB</li>
+        <li>File must contain valid HTML content</li>
+        <li>Requires valid API key authentication</li>
+    </ul>
+    
+    <div class="footer">
+        <p>Generated on: <span id="timestamp"></span></p>
+        <p>This document was created by uploading an HTML file to the PDF conversion API.</p>
+    </div>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>
