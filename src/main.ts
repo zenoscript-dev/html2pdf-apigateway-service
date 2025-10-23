@@ -2,6 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as compression from "compression";
+import * as cookieParser from "cookie-parser";
 import * as cors from "cors";
 import * as dotenv from "dotenv";
 import helmet from "helmet";
@@ -15,15 +16,26 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Apply security middleware
-  // app.use(
-  //   cors({
-  //     origin: [process.env.CORS_ORIGIN || "*", "http://localhost:5176", "http://localhost:5176/signin"],
-  //     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  //     allowedHeaders: ["Content-Type"],
-  //     maxAge: 86400, // 24 hours
-  //   })
-  // );
-  app.use(cors());
+  app.use(
+    cors({
+      origin: [
+        process.env.CORS_ORIGIN || "http://localhost:5176",
+        "http://localhost:5176",
+        "http://localhost:5176/",
+      ],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "Api-Key",
+        "Cookie",
+      ],
+      credentials: true, // Allow cookies to be sent
+      maxAge: 86400, // 24 hours
+    })
+  );
+  app.use(cookieParser());
   app.use(morgan("combined"));
   app.use(
     helmet({

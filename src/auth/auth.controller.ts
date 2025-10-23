@@ -9,6 +9,8 @@ import {
   Ip,
   Post,
   Query,
+  Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -17,13 +19,13 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { Request, Response } from "express";
 import { User } from "../database/entities";
 import { AuthService } from "./auth.service";
 import { CurrentUser, Public } from "./decorators";
 import {
   ForgotPasswordDto,
   LoginDto,
-  RefreshTokenDto,
   ResetPasswordDto,
   SignupDto,
   VerifyEmailDto,
@@ -111,10 +113,30 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Ip() ipAddress: string,
-    @Headers("user-agent") userAgent: string
+    @Headers("user-agent") userAgent: string,
+    @Res({ passthrough: true }) res: Response
   ) {
     try {
-      return await this.authService.login(loginDto, ipAddress, userAgent);
+      const result = await this.authService.login(
+        loginDto,
+        ipAddress,
+        userAgent
+      );
+
+      // Set refresh token as HTTP-only cookie
+      res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: "/",
+      });
+
+      // Return only access token and user info (not refresh token)
+      return {
+        accessToken: result.accessToken,
+        user: result.user,
+      };
     } catch (error) {
       throw new HttpException(
         error.message || "Failed to authenticate user",
@@ -136,16 +158,42 @@ export class AuthController {
     description: "Invalid or expired refresh token",
   })
   async refresh(
-    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Ip() ipAddress: string,
     @Headers("user-agent") userAgent: string
   ) {
     try {
-      return await this.authService.refreshTokens(
-        refreshTokenDto.refreshToken,
+      // Get refresh token from cookie
+      const refreshToken = req.cookies?.refreshToken;
+
+      if (!refreshToken) {
+        throw new HttpException(
+          "Refresh token not found",
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+
+      const result = await this.authService.refreshTokens(
+        refreshToken,
         ipAddress,
         userAgent
       );
+
+      // Set new refresh token as HTTP-only cookie
+      res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: "/",
+      });
+
+      // Return only access token and user info (not refresh token)
+      return {
+        accessToken: result.accessToken,
+        user: result.user,
+      };
     } catch (error) {
       throw new HttpException(
         error.message || "Failed to refresh authentication token",
@@ -162,9 +210,17 @@ export class AuthController {
     status: 200,
     description: "Logged out successfully",
   })
-  async logout(@Body() refreshTokenDto: RefreshTokenDto) {
+  async logout(@Res({ passthrough: true }) res: Response) {
     try {
-      return await this.authService.logout(refreshTokenDto.refreshToken);
+      // Clear refresh token cookie
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+      });
+
+      return { message: "Logged out successfully" };
     } catch (error) {
       throw new HttpException(
         error.message || "Failed to logout user",

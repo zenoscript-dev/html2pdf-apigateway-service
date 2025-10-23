@@ -37,7 +37,7 @@ export interface JwtPayload {
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken: string; // Include refresh token for cookie setting
   user: {
     id: string;
     email: string;
@@ -346,25 +346,9 @@ export class AuthService {
     const accessToken = this.generateAccessToken(payload);
     const refreshToken = this.generateRefreshToken(payload);
 
-    // Store refresh token
-    const hashedRefreshToken = crypto
-      .createHash("sha256")
-      .update(refreshToken)
-      .digest("hex");
-
-    const refreshTokenEntity = this.refreshTokenRepository.create({
-      token: hashedRefreshToken,
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      ipAddress,
-      userAgent,
-    });
-
-    await this.refreshTokenRepository.save(refreshTokenEntity);
-
     return {
       accessToken,
-      refreshToken,
+      refreshToken, // Return refresh token to be set as cookie
       user: {
         id: user.id,
         email: user.email,
@@ -388,33 +372,10 @@ export class AuthService {
     userAgent?: string
   ): Promise<AuthResponse> {
     try {
-      // Verify JWT
+      // Verify JWT refresh token
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.configService.jwtSecret,
       });
-
-      // Hash the refresh token to compare
-      const hashedToken = crypto
-        .createHash("sha256")
-        .update(refreshToken)
-        .digest("hex");
-
-      // Find refresh token in database
-      const storedToken = await this.refreshTokenRepository.findOne({
-        where: {
-          token: hashedToken,
-          userId: payload.sub,
-          isRevoked: false,
-        },
-      });
-
-      if (!storedToken) {
-        throw new UnauthorizedException("Invalid refresh token");
-      }
-
-      if (storedToken.expiresAt < new Date()) {
-        throw new UnauthorizedException("Refresh token has expired");
-      }
 
       // Get user with plan
       const user = await this.userRepository.findOne({
@@ -436,34 +397,9 @@ export class AuthService {
       const newAccessToken = this.generateAccessToken(newPayload);
       const newRefreshToken = this.generateRefreshToken(newPayload);
 
-      // Revoke old refresh token
-      storedToken.isRevoked = true;
-      storedToken.revokedAt = new Date();
-      storedToken.replacedByToken = crypto
-        .createHash("sha256")
-        .update(newRefreshToken)
-        .digest("hex");
-      await this.refreshTokenRepository.save(storedToken);
-
-      // Store new refresh token
-      const newHashedToken = crypto
-        .createHash("sha256")
-        .update(newRefreshToken)
-        .digest("hex");
-
-      const newTokenEntity = this.refreshTokenRepository.create({
-        token: newHashedToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        ipAddress,
-        userAgent,
-      });
-
-      await this.refreshTokenRepository.save(newTokenEntity);
-
       return {
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
+        refreshToken: newRefreshToken, // Return new refresh token to be set as cookie
         user: {
           id: user.id,
           email: user.email,
@@ -485,21 +421,8 @@ export class AuthService {
   // ====================
 
   async logout(refreshToken: string): Promise<{ message: string }> {
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(refreshToken)
-      .digest("hex");
-
-    const storedToken = await this.refreshTokenRepository.findOne({
-      where: { token: hashedToken },
-    });
-
-    if (storedToken) {
-      storedToken.isRevoked = true;
-      storedToken.revokedAt = new Date();
-      await this.refreshTokenRepository.save(storedToken);
-    }
-
+    // With cookie-based refresh tokens, we don't need to store/revoke tokens in database
+    // The refresh token will be cleared from the cookie on the client side
     return { message: "Logged out successfully" };
   }
 
